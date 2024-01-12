@@ -17,4 +17,4 @@ makedocs(;
     pages=["Home" => "index.md"],
 )
 
-deploydocs(; repo="github.com/reactivebayes/FastCholesky.jl", devbranch="main")
+deploydocs(; repo="github.com/ReactiveBayes/FastCholesky.jl", devbranch="main", forcepush=true)
