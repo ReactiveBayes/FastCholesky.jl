@@ -6,15 +6,15 @@ DocMeta.setdocmeta!(FastCholesky, :DocTestSetup, :(using FastCholesky, LinearAlg
 makedocs(;
     modules=[FastCholesky],
     authors="Bart van Erp <b.v.erp@tue.nl>, Bagaev Dmitry <d.v.bagaev@tue.nl> and contributors",
-    repo="https://github.com/biaslab/FastCholesky.jl/blob/{commit}{path}#{line}",
+    repo="https://github.com/reactivebayes/FastCholesky.jl/blob/{commit}{path}#{line}",
     sitename="FastCholesky.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://biaslab.github.io/FastCholesky.jl",
+        canonical="https://reactivebayes.github.io/FastCholesky.jl",
         edit_link="main",
         assets=String[],
     ),
     pages=["Home" => "index.md"],
 )
 
-deploydocs(; repo="github.com/biaslab/FastCholesky.jl", devbranch="main")
+deploydocs(; repo="github.com/ReactiveBayes/FastCholesky.jl", devbranch="main", forcepush=true)
