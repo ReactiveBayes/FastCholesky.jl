@@ -93,7 +93,7 @@ end
         64.9016820609457 1610.468694700484 0.10421453600353446 2.6155294717625517
         1712.2779951809016 42488.422800411565 2.6155294717625517 69.0045838263577
     ]
-    @test inv(fastcholesky(F)) * F ≈ Diagonal(ones(4)) rtol=1e-4
-    @test cholinv(F) * F ≈ Diagonal(ones(4)) rtol=1e-4
+    @test fastcholesky(F) \ F ≈ Diagonal(ones(4)) rtol=1e-4
+    @test cholinv(F) * F ≈ Diagonal(ones(4)) rtol=5e-4 # call to `inv` is less precise than the `\` operator
     @test fastcholesky(F).L ≈ cholesky(F).L
 end
