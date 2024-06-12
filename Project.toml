@@ -20,10 +20,11 @@ StaticArraysCore = "1"
 julia = "1.6"
 
 [extras]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "StaticArrays", "StaticArraysCore", "ReTestItems"]
+test = ["Test", "StaticArrays", "StaticArraysCore", "ReTestItems", "JET"]

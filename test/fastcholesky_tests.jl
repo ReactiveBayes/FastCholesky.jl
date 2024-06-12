@@ -39,6 +39,12 @@
 
                     # Check that we do not lose the static type in the process for example
                     @test typeof(cholesky(input)) === typeof(fastcholesky(input))
+
+                    @test_opt unoptimize_throw_blocks=false ignored_modules=(Base,) fastcholesky(input)
+                    @test_opt unoptimize_throw_blocks=false ignored_modules=(Base,) cholinv(input)
+                    @test_opt unoptimize_throw_blocks=false ignored_modules=(Base,) cholsqrt(input)
+                    @test_opt unoptimize_throw_blocks=false ignored_modules=(Base,) chollogdet(input)
+                    @test_opt unoptimize_throw_blocks=false ignored_modules=(Base,) cholinv_logdet(input)
                 end
             end
         end
