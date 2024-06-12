@@ -8,10 +8,10 @@ function FastCholesky.fastcholesky(input::StaticArraysCore.StaticArray)
     u = C.uplo
     c = C.info
     if !LinearAlgebra.issuccess(C)
-        C_ = cholesky(Positive, C, tol = PositiveFactorizations.default_δ(C))
+        C_ = cholesky(Positive, Matrix(C), tol = PositiveFactorizations.default_δ(C))
         f = typeof(C.factors)(C_.factors)
-        u = C_.uplo
-        c = C_.info
+        u = typeof(C.uplo)(C_.uplo)
+        c = typeof(C.info)(C_.info)
     end
     return Cholesky(f, u, c)
 end

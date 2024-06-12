@@ -1,4 +1,4 @@
-using Test, FastCholesky, LinearAlgebra, StaticArrays, StaticArraysCore
+using Test, FastCholesky, LinearAlgebra, StaticArrays, StaticArraysCore, JET
 
 const SupportedTypes = (Float32, Float64, BigFloat)
 
