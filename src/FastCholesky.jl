@@ -75,7 +75,7 @@ function fastcholesky!(A::Matrix{<:BlasFloat})
     n = LinearAlgebra.checksquare(A)
     # Heuristics, the built-in version is faster for large inputs
     # Perhaps due to the better cache usage, the Base version fallbacks to LAPACK
-    return n < 100 ? _fastcholesky!(n, A) : cholesky!(A; check=false)
+    return n < 20 ? _fastcholesky!(n, A) : cholesky!(A; check=false)
 end
 
 function _fastcholesky!(n, A::AbstractMatrix)
