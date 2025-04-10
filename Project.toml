@@ -1,7 +1,7 @@
 name = "FastCholesky"
 uuid = "2d5283b6-8564-42b6-bb00-83ed8e915756"
 authors = ["Bart van Erp <b.v.erp@tue.nl>, Bagaev Dmitry <d.v.bagaev@tue.nl> and contributors"]
-version = "1.3.2"
+version = "1.3.3"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
