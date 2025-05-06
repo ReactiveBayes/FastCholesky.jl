@@ -42,7 +42,7 @@ function fastcholesky!(x::UniformScaling)
 end
 
 """
-    fastcholesky!(input; fallback_gmw81=true, symmetrize_input=true, tol=PositiveFactorizations.default_δ(input))
+    fastcholesky!(input; fallback_gmw81=true, symmetrize_input=true, gmw81_tol=PositiveFactorizations.default_δ(input), symmetric_tol=1e-8)
 
 Calculate the Cholesky factorization of the input matrix `input` in-place. This function is an in-place version of `fastcholesky`.
 It first checks if the input matrix is symmetric, and if it is, it will use the built-in Cholesky factorization by wrapping the input in a `Hermitian` matrix.
