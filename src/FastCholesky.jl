@@ -26,8 +26,8 @@ julia> C.L * C.L' ≈ [ 1.0 0.5; 0.5 1.0 ]
 true
 ```
 """
-function fastcholesky(input::AbstractMatrix)
-    return fastcholesky!(copy(input))
+function fastcholesky(input::AbstractMatrix)::Cholesky{eltype(input),typeof(input)}
+    return fastcholesky!(copy(input))::Cholesky{eltype(input),typeof(input)}
 end
 
 fastcholesky(input::Number) = cholesky(input)
@@ -74,7 +74,7 @@ function fastcholesky!(
     symmetrize_input::Bool=true,
     gmw81_tol=PositiveFactorizations.default_δ(A),
     symmetric_tol=1e-8,
-)
+)::Cholesky{eltype(A),typeof(A)}
     n = LinearAlgebra.checksquare(A)
 
     is_almost_symmetric = _issymmetric(A; tol=symmetric_tol)
@@ -96,6 +96,7 @@ function fastcholesky!(
         elseif !issuccess(C) && !fallback_gmw81
             throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
         end
+
     elseif !is_almost_symmetric
         @warn "The input matrix to `fastcholesky!` is not symmetric exceding the tolerance threshold $symmetric_tol"
         if symmetrize_input
@@ -105,6 +106,10 @@ function fastcholesky!(
             throw(ArgumentError("The input matrix is not symmetric, set `symmetrize_input=true` to symmetrize the input matrix"))
         end
     end
+
+    # this normally should be unreachable, but that makes it easier for compiler 
+    # to infer that the function is returning a `Cholesky` object
+    return Cholesky(A, 'L', convert(BlasInt, -1))
 end
 
 function _fastcholesky!(n, A::AbstractMatrix)
