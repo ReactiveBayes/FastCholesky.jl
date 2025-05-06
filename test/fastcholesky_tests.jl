@@ -51,7 +51,11 @@
 
         nonposdefmatrix = Matrix(Diagonal(-ones(size)))
 
-        @test !issuccess(fastcholesky!(nonposdefmatrix))
+        # We test that the fallback to GMW81 works, for non-positive definite matrices
+        # the GMW81 algorihtm should succeed, but the built-in Cholesky factorization should fail
+        @test_throws ArgumentError fastcholesky!(nonposdefmatrix; fallback_gmw81 = false, symmetrize_input = false)
+        @test issuccess(fastcholesky!(nonposdefmatrix; fallback_gmw81 = true))
+        @test issuccess(fastcholesky!(nonposdefmatrix; fallback_gmw81 = false, symmetrize_input = true))
     end
 end
 

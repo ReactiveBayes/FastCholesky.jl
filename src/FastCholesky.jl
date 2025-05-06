@@ -27,10 +27,7 @@ true
 ```
 """
 function fastcholesky(input::AbstractMatrix)
-    # The `tol` argument here is tricky, it basically defines the threshold for a diagonal entry to be zero
-    # The `PositiveFactorizations` replaces zero diagonal entries under the hood and simply uses `1` instead
-    # The `PositiveFactorizations.default_δ` should small enough in majority of the cases
-    return cholesky(PositiveFactorizations.Positive, Hermitian(input), tol = PositiveFactorizations.default_δ(input))
+    return fastcholesky!(copy(input))
 end
 
 fastcholesky(input::Number) = cholesky(input)
@@ -38,19 +35,10 @@ fastcholesky(input::Diagonal) = cholesky(input)
 fastcholesky(input::Hermitian) = cholesky(PositiveFactorizations.Positive, input)
 
 function fastcholesky(x::UniformScaling)
-    return error(
-        "`fastcholesky` is not defined for `UniformScaling`. The shape is not determined."
-    )
+    return error("`fastcholesky` is not defined for `UniformScaling`. The shape is not determined.")
 end
 function fastcholesky!(x::UniformScaling)
-    return error(
-        "`fastcholesky!` is not defined for `UniformScaling`. The shape is not determined."
-    )
-end
-
-function fastcholesky(input::Matrix{<:BlasFloat})
-    C = fastcholesky!(copy(input))
-    return isposdef(C) ? C : cholesky(PositiveFactorizations.Positive, Hermitian(input))
+    return error("`fastcholesky!` is not defined for `UniformScaling`. The shape is not determined.")
 end
 
 """
@@ -71,11 +59,44 @@ true
 """
 function fastcholesky! end
 
-function fastcholesky!(A::Matrix{<:BlasFloat})
+function fastcholesky!(A::AbstractMatrix; fallback_gmw81::Bool=true, symmetrize_input::Bool=true, tol = PositiveFactorizations.default_δ(A))
     n = LinearAlgebra.checksquare(A)
     # Heuristics, the built-in version is faster for large inputs
     # Perhaps due to the better cache usage, the Base version fallbacks to LAPACK
-    return n < 20 ? _fastcholesky!(n, A) : cholesky!(A; check=false)
+    C = n < 20 ? _fastcholesky!(n, A) : cholesky!(A; check=false)
+
+    # If the previous attempt succeeded, return the result immediately
+    if issuccess(C)
+        return C
+    end
+
+    # If not, we have several options, first we check if the input was actually symmetric
+    # With small differences, if 
+    # 1. it was (almost) symmetric, we can retry with `GMW81` algorithm  by wrapping the input in a `Hermitian` matrix
+    # 2. if it was not symmetric, we can warn the user that the input matrix is not symmetric and 
+    #    2.1 if the symmetrize_input flag is true and fallback_gmw81 is true, we will retry by symmetrizing the input and use the `GMW81` algorithm 
+    #    2.2 if the symmetrize_input flag is false and fallback_gmw81 is true, we will wrap the input in a `Hermitian` matrix and use the `GMW81` algorithm (warning will still be shown)
+    #    2.3 if the symmetrize_input flag is true and fallback_gmw81 is false, we will retry by symmetrizing the input and use the built-in Cholesky factorization
+    # In other cases, we throw an error
+    is_almost_symmetric = _issymmetric(A; tol=tol)
+
+    if is_almost_symmetric && fallback_gmw81
+        return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
+    else 
+        @warn "The input matrix to `fastcholesky!` is not symmetric exceding the tolerance threshold $tol, the result of the Cholesky factorization might be incorrect" 
+
+        if symmetrize_input && fallback_gmw81 # option 2.1
+            A = (A + A') / 2
+            return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
+        elseif !symmetrize_input && fallback_gmw81 # option 2.2
+            return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
+        elseif symmetrize_input && !fallback_gmw81
+            A = (A + A') / 2
+            return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
+        end
+    end
+
+    throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
 end
 
 function _fastcholesky!(n, A::AbstractMatrix)
@@ -96,6 +117,17 @@ function _fastcholesky!(n, A::AbstractMatrix)
         end
     end
     return Cholesky(A, 'L', convert(BlasInt, 0))
+end
+
+function _issymmetric(A::AbstractMatrix; tol=PositiveFactorizations.default_δ(A))
+    for i in axes(A, 1)
+        for j in 1:i
+            if abs(A[i, j] - A[j, i]) > tol
+                return false
+            end
+        end
+    end
+    return true
 end
 
 """
