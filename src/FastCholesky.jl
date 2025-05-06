@@ -42,13 +42,22 @@ function fastcholesky!(x::UniformScaling)
 end
 
 """
-    fastcholesky!(input)
+    fastcholesky!(input; fallback_gmw81=true, symmetrize_input=true, tol=PositiveFactorizations.default_δ(input))
 
-Calculate the Cholesky factorization of the input matrix `input` in-place. This function is an in-place version of `fastcholesky`, 
-and it does not check the positive-definiteness of the input matrix or throw errors. You can use `LinearAlgebra.issuccess` to check if the result is a proper Cholesky factorization.
+Calculate the Cholesky factorization of the input matrix `input` in-place. This function is an in-place version of `fastcholesky`.
+It first checks if the input matrix is symmetric, and if it is, it will use the built-in Cholesky factorization by wrapping the input in a `Hermitian` matrix.
+If the input matrix is not symmetric and `symmetrize_input=true`, it will symmetrize the input matrix and try again recursively.
+If the input matrix is not symmetrics, not positive definite, and `fallback_gmw81=true`, it will use the `GMW81` algorithm as a fallback.
+In other cases, it will throw an error.
+
+# Keyword arguments
+- `fallback_gmw81::Bool=true`: If true, the function will use the `GMW81` algorithm as a fallback if the input matrix is not positive definite.
+- `symmetrize_input::Bool=true`: If true, the function will symmetrize the input matrix before retrying the Cholesky factorization in case if the first attempt failed.
+- `gmw81_tol::Real=PositiveFactorizations.default_δ(input)`: The tolerance for the positive-definiteness of the input matrix for the `GMW81` algorithm.
+- `symmetric_tol::Real=1e-8`: The tolerance for the symmetry of the input matrix.
 
 !!! note
-    This function does not verify the positive-definiteness of the input matrix and does not throw errors. Ensure that the input matrix is appropriate for Cholesky factorization before using this function.
+    Use this function only when you expect the input matrix to be nearly positive definite.
 
 ```jldoctest; setup = :(using FastCholesky, LinearAlgebra)
 julia> C = fastcholesky!([ 1.0 0.5; 0.5 1.0 ]);
@@ -59,44 +68,43 @@ true
 """
 function fastcholesky! end
 
-function fastcholesky!(A::AbstractMatrix; fallback_gmw81::Bool=true, symmetrize_input::Bool=true, tol = PositiveFactorizations.default_δ(A))
+function fastcholesky!(
+    A::AbstractMatrix;
+    fallback_gmw81::Bool=true,
+    symmetrize_input::Bool=true,
+    gmw81_tol=PositiveFactorizations.default_δ(A),
+    symmetric_tol=1e-8,
+)
     n = LinearAlgebra.checksquare(A)
-    # Heuristics, the built-in version is faster for large inputs
-    # Perhaps due to the better cache usage, the Base version fallbacks to LAPACK
-    C = n < 20 ? _fastcholesky!(n, A) : cholesky!(A; check=false)
 
-    # If the previous attempt succeeded, return the result immediately
-    if issuccess(C)
-        return C
-    end
+    is_almost_symmetric = _issymmetric(A; tol=symmetric_tol)
 
-    # If not, we have several options, first we check if the input was actually symmetric
-    # With small differences, if 
-    # 1. it was (almost) symmetric, we can retry with `GMW81` algorithm  by wrapping the input in a `Hermitian` matrix
-    # 2. if it was not symmetric, we can warn the user that the input matrix is not symmetric and 
-    #    2.1 if the symmetrize_input flag is true and fallback_gmw81 is true, we will retry by symmetrizing the input and use the `GMW81` algorithm 
-    #    2.2 if the symmetrize_input flag is false and fallback_gmw81 is true, we will wrap the input in a `Hermitian` matrix and use the `GMW81` algorithm (warning will still be shown)
-    #    2.3 if the symmetrize_input flag is true and fallback_gmw81 is false, we will retry by symmetrizing the input and use the built-in Cholesky factorization
-    # In other cases, we throw an error
-    is_almost_symmetric = _issymmetric(A; tol=tol)
+    if is_almost_symmetric
+        C = n < 20 ? _fastcholesky!(n, A) : cholesky!(Hermitian(A); check=false)
 
-    if is_almost_symmetric && fallback_gmw81
-        return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
-    else 
-        @warn "The input matrix to `fastcholesky!` is not symmetric exceding the tolerance threshold $tol, the result of the Cholesky factorization might be incorrect" 
+        if issuccess(C)
+            return C
+        end
 
-        if symmetrize_input && fallback_gmw81 # option 2.1
+        if !issuccess(C) && fallback_gmw81
+            RetryC = cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=gmw81_tol)
+            if issuccess(RetryC)
+                return RetryC
+            else
+                throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
+            end
+        elseif !issuccess(C) && !fallback_gmw81
+            throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
+        end
+    elseif !is_almost_symmetric
+        @warn "The input matrix to `fastcholesky!` is not symmetric exceding the tolerance threshold $symmetric_tol"
+        if symmetrize_input
             A = (A + A') / 2
-            return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
-        elseif !symmetrize_input && fallback_gmw81 # option 2.2
-            return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
-        elseif symmetrize_input && !fallback_gmw81
-            A = (A + A') / 2
-            return cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=tol)
+            return fastcholesky!(A; fallback_gmw81=fallback_gmw81, symmetrize_input=false, gmw81_tol=gmw81_tol, symmetric_tol=symmetric_tol)
+        else
+            throw(ArgumentError("The input matrix is not symmetric, set `symmetrize_input=true` to symmetrize the input matrix"))
         end
     end
-
-    throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
 end
 
 function _fastcholesky!(n, A::AbstractMatrix)
