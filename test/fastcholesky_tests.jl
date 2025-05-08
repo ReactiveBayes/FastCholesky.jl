@@ -179,3 +179,11 @@ end
 
     @test isempty(String(take!(io)))
 end
+
+@testitem "Regression from FastCholesky.jl 1.4.0 - type assertion should work fine" begin 
+    using LinearAlgebra
+
+    @testset let A = view(Matrix([ 1.0 0.0; 0.0 1.0 ]), 1:2, 1:2)
+        @test cholinv(A) * A ≈ I
+    end
+end

@@ -27,6 +27,7 @@ function make_rand_inputs(::Type{T}, size) where {T}
         make_rand_diagonal(T, size),
         make_rand_posdef(T, size),
         make_rand_hermitian(T, size),
+        view(make_rand_hermitian(T, size), 1:size, 1:size),
         oneunit(T) * I(size),
     ]
     # StaticArrays do not work efficiently for large inputs anyway

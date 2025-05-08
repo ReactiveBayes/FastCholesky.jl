@@ -26,8 +26,8 @@ julia> C.L * C.L' ≈ [ 1.0 0.5; 0.5 1.0 ]
 true
 ```
 """
-function fastcholesky(input::AbstractMatrix)::Cholesky{eltype(input),typeof(input)}
-    return fastcholesky!(copy(input))::Cholesky{eltype(input),typeof(input)}
+function fastcholesky(input::AbstractMatrix)
+    return fastcholesky!(copy(input))
 end
 
 fastcholesky(input::Number) = cholesky(input)
@@ -74,30 +74,28 @@ function fastcholesky!(
     symmetrize_input::Bool=true,
     gmw81_tol=PositiveFactorizations.default_δ(A),
     symmetric_tol=1e-8,
-)::Cholesky{eltype(A),typeof(A)}
+)
     n = LinearAlgebra.checksquare(A)
 
     is_almost_symmetric = _issymmetric(A; tol=symmetric_tol)
 
     if is_almost_symmetric
         C = n < 20 ? _fastcholesky!(n, A) : cholesky!(Hermitian(A); check=false)
-
         if issuccess(C)
             return C
-        end
-
-        if !issuccess(C) && fallback_gmw81
-            RetryC = cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=gmw81_tol)
-            if issuccess(RetryC)
-                return RetryC
+        else
+            if fallback_gmw81
+                RetryC = cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=gmw81_tol)
+                if issuccess(RetryC)
+                    return RetryC
+                else
+                    throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
+                end
             else
                 throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
             end
-        elseif !issuccess(C) && !fallback_gmw81
-            throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
         end
-
-    elseif !is_almost_symmetric
+    else
         @warn "The input matrix to `fastcholesky!` is not symmetric exceding the tolerance threshold $symmetric_tol"
         if symmetrize_input
             A = (A + A') / 2
@@ -107,9 +105,11 @@ function fastcholesky!(
         end
     end
 
-    # this normally should be unreachable, but that makes it easier for compiler 
-    # to infer that the function is returning a `Cholesky` object
-    return Cholesky(A, 'L', convert(BlasInt, -1))
+    # this is actually unreachable
+    # the first `is_almost_symmetric` branch either returns or errors
+    # the second `!is_almost_symmetric` branch either returns or errors
+    # this statement to make the compiler happy and infer that the function is returning a `Cholesky` object
+    return cholesky!(Hermitian(A); check=false)
 end
 
 function _fastcholesky!(n, A::AbstractMatrix)
