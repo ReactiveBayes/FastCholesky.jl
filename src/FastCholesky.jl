@@ -18,6 +18,13 @@ By default, it falls back to using `LinearAlgebra.cholesky(PositiveFactorization
     This function assumes that the input matrix is nearly positive definite, and it will attempt to make the smallest possible adjustments 
     to the matrix to ensure it becomes positive definite. Note that the magnitude of these adjustments may not necessarily be small, so it's important to use 
     this function only when you expect the input matrix to be nearly positive definite.
+
+# Environment Variables
+
+The behavior of this function regarding non-symmetric matrices can be controlled through environment variables:
+
+- `JULIA_FASTCHOLESKY_NO_WARN_NON_SYMMETRIC=1`: Set this to suppress warnings about non-symmetric input matrices
+- `JULIA_FASTCHOLESKY_THROW_ERROR_NON_SYMMETRIC=1`: Set this to make the function error instead of warn when encountering non-symmetric matrices
     
 ```jldoctest; setup = :(using FastCholesky, LinearAlgebra)
 julia> C = fastcholesky([ 1.0 0.5; 0.5 1.0 ]);
@@ -56,6 +63,13 @@ In other cases, it will throw an error.
 - `gmw81_tol::Real=PositiveFactorizations.default_δ(input)`: The tolerance for the positive-definiteness of the input matrix for the `GMW81` algorithm.
 - `symmetric_tol::Real=1e-8`: The tolerance for the symmetry of the input matrix.
 
+# Environment Variables
+
+The behavior of this function regarding non-symmetric matrices can be controlled through environment variables:
+
+- `JULIA_FASTCHOLESKY_NO_WARN_NON_SYMMETRIC=1`: Set this to suppress warnings about non-symmetric input matrices
+- `JULIA_FASTCHOLESKY_THROW_ERROR_NON_SYMMETRIC=1`: Set this to make the function error instead of warn when encountering non-symmetric matrices
+
 !!! note
     Use this function only when you expect the input matrix to be nearly positive definite.
 
@@ -67,6 +81,9 @@ true
 ```
 """
 function fastcholesky! end
+
+const NO_WARN_NON_SYMMETRIC_ENV = "JULIA_FASTCHOLESKY_NO_WARN_NON_SYMMETRIC"
+const THROW_ERROR_NON_SYMMETRIC_ENV = "JULIA_FASTCHOLESKY_THROW_ERROR_NON_SYMMETRIC"
 
 function fastcholesky!(
     A::AbstractMatrix;
@@ -96,12 +113,23 @@ function fastcholesky!(
             end
         end
     else
-        @warn "The input matrix to `fastcholesky!` is not symmetric exceding the tolerance threshold $symmetric_tol"
+        if haskey(ENV, THROW_ERROR_NON_SYMMETRIC_ENV)
+            error(
+                lazy"The input matrix to `FastCholesky` was not symmetric and `$(THROW_ERROR_NON_SYMMETRIC_ENV)` environment variable was set. The tolerance threshold was `$symmetric_tol`. Unset the environment variable to suppress this error and turn it to a warning.",
+            )
+        end
+        if !haskey(ENV, NO_WARN_NON_SYMMETRIC_ENV)
+            @warn lazy"The input matrix to `FastCholesky` is not symmetric. The tolerance threshold is `$symmetric_tol`. Set `$(NO_WARN_NON_SYMMETRIC_ENV)=1` environment variable to suppress this warning. Set `$(THROW_ERROR_NON_SYMMETRIC_ENV)=1` to throw an error instead of a warning."    
+        end
         if symmetrize_input
             A = (A + A') / 2
             return fastcholesky!(A; fallback_gmw81=fallback_gmw81, symmetrize_input=false, gmw81_tol=gmw81_tol, symmetric_tol=symmetric_tol)
         else
-            throw(ArgumentError("The input matrix is not symmetric, set `symmetrize_input=true` to symmetrize the input matrix"))
+            throw(
+                ArgumentError(
+                    "The input matrix is not symmetric, and `symmetrize_input` was set to `false`. Set `symmetrize_input=true` to symmetrize the input matrix even if it is not symmetric.",
+                ),
+            )
         end
     end
 
