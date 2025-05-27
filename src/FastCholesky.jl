@@ -34,7 +34,9 @@ true
 ```
 """
 function fastcholesky(input::AbstractMatrix)
-    return fastcholesky!(copy(input))
+    A = zeros(eltype(input), size(input))
+    copyto!(A, input)
+    return fastcholesky!(A)
 end
 
 fastcholesky(input::Number) = cholesky(input)
@@ -119,7 +121,7 @@ function fastcholesky!(
             )
         end
         if !haskey(ENV, NO_WARN_NON_SYMMETRIC_ENV)
-            @warn lazy"The input matrix to `FastCholesky` is not symmetric. The tolerance threshold is `$symmetric_tol`. Set `$(NO_WARN_NON_SYMMETRIC_ENV)=1` environment variable to suppress this warning. Set `$(THROW_ERROR_NON_SYMMETRIC_ENV)=1` to throw an error instead of a warning."    
+            @warn lazy"The input matrix to `FastCholesky` is not symmetric. The tolerance threshold is `$symmetric_tol`. Set `$(NO_WARN_NON_SYMMETRIC_ENV)=1` environment variable to suppress this warning. Set `$(THROW_ERROR_NON_SYMMETRIC_ENV)=1` to throw an error instead of a warning."
         end
         if symmetrize_input
             A = (A + A') / 2

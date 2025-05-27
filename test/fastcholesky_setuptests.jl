@@ -1,4 +1,4 @@
-using Test, FastCholesky, LinearAlgebra, StaticArrays, StaticArraysCore, JET
+using Test, FastCholesky, LinearAlgebra, StaticArrays, StaticArraysCore, JET, BlockArrays
 
 const SupportedTypes = (Float32, Float64, BigFloat)
 
@@ -22,11 +22,16 @@ function make_rand_lowertriangular(::Type{T}, size) where {T}
     return LowerTriangular(10rand(T, size, size))
 end
 
+function make_rand_block_matrix(::Type{T}, size) where {T}
+    return BlockedArray(make_rand_posdef(T, 2size), [size, size], [size, size])
+end
+
 function make_rand_inputs(::Type{T}, size) where {T}
     inputs = [
         make_rand_diagonal(T, size),
         make_rand_posdef(T, size),
         make_rand_hermitian(T, size),
+        make_rand_block_matrix(T, size),
         view(make_rand_hermitian(T, size), 1:size, 1:size),
         oneunit(T) * I(size),
     ]

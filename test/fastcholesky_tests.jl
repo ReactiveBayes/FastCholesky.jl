@@ -224,3 +224,30 @@ end
         @test cholinv(A) * A ≈ I
     end
 end
+
+@testitem "BlockArrays support" begin
+    include("fastcholesky_setuptests.jl")
+
+    @testset "Case 1" begin
+        L = randn(8, 8)
+        M = L * L' + 10I
+        @test cholinv(M) * M ≈ I
+    end
+
+    @testset "Case 2" begin
+        B = mortar(reshape([Diagonal(ones(8)), Diagonal(zeros(8)), Diagonal(zeros(8)), Diagonal(ones(8))], 2, 2))
+        @test cholinv(B) * B ≈ I
+    end
+
+    @testset "Case 3" begin
+        B = BlockArrays.BlockDiagonal([Diagonal(ones(2)), Diagonal(ones(2)), Diagonal(ones(2)), Diagonal(ones(2))])
+        @test cholinv(B) * B ≈ I
+    end
+
+    @testset "Case 4" begin
+        B = BlockArrays.BlockDiagonal([
+            Matrix(Diagonal(ones(2))), Matrix(Diagonal(ones(2))), Matrix(Diagonal(ones(2))), Matrix(Diagonal(ones(2)))
+        ])
+        @test cholinv(B) * B ≈ I
+    end
+end
