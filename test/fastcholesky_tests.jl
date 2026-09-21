@@ -36,6 +36,14 @@
                         @test all(cholinv_logdet(input) .≈ (inv(input), logdet(input)))
                         @test cholsqrt(input) * cholsqrt(input)' ≈ input
 
+                        # `cholsqrt` must keep a concrete return type, see issue #35
+                        # `Cholesky.L` is a `Union` of two `LowerTriangular` types since Julia 1.13
+                        let inferred = only(Base.return_types(cholsqrt, Tuple{typeof(input)}))
+                            @test isconcretetype(inferred)
+                            @test typeof(cholsqrt(input)) === inferred
+                            input isa Diagonal || @test cholsqrt(input) isa LowerTriangular
+                        end
+
                         if Type <: LinearAlgebra.BlasFloat && input isa Matrix
                             @test collect(fastcholesky(input).L) ≈ collect(fastcholesky!(deepcopy(input)).L)
                         end
@@ -48,11 +56,11 @@
                         # Check that we do not lose the static type in the process for example
                         @test typeof(cholesky(input)) === typeof(fastcholesky(input))
 
-                        @test_opt unoptimize_throw_blocks = false ignored_modules = (Base,) fastcholesky(input)
-                        @test_opt unoptimize_throw_blocks = false ignored_modules = (Base,) cholinv(input)
-                        @test_opt unoptimize_throw_blocks = false ignored_modules = (Base,) cholsqrt(input)
-                        @test_opt unoptimize_throw_blocks = false ignored_modules = (Base,) chollogdet(input)
-                        @test_opt unoptimize_throw_blocks = false ignored_modules = (Base,) cholinv_logdet(input)
+                        @test_opt ignored_modules = (Base,) fastcholesky(input)
+                        @test_opt ignored_modules = (Base,) cholinv(input)
+                        @test_opt ignored_modules = (Base,) cholsqrt(input)
+                        @test_opt ignored_modules = (Base,) chollogdet(input)
+                        @test_opt ignored_modules = (Base,) cholinv_logdet(input)
                     end
                 end
             end
