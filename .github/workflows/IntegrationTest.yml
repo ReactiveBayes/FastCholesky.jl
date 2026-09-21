@@ -17,6 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `[sources]` in `Project.toml` requires Julia 1.11 or newer
         julia-version: ['1']
         os: [ubuntu-latest]
         package:
@@ -46,13 +47,43 @@ jobs:
           repository: ${{ matrix.package.user }}/${{ matrix.package.repo }}
           path: downstream
 
+      - name: Point Downstream at this version of FastCholesky
+        shell: julia --color=yes {0}
+        run: |
+          using TOML
+
+          const NAME = "FastCholesky"
+          const UUID = "2d5283b6-8564-42b6-bb00-83ed8e915756"
+
+          # We add a `[sources]` entry rather than calling `Pkg.develop`, because `develop`
+          # moves the package into `[deps]`. For a downstream that depends on FastCholesky
+          # weakly (e.g. BayesBase, via `FastCholeskyExt`) that breaks its `test` target,
+          # which may only reference names listed in `[extras]` or `[weakdeps]`.
+          projectfile = joinpath("downstream", "Project.toml")
+          project = TOML.parsefile(projectfile)
+
+          # `[sources]` is only honoured for a name listed in `[deps]` or `[extras]`,
+          # so a purely weak dependency needs an `[extras]` entry adding first
+          deps = get(project, "deps", Dict{String, Any}())
+          extras = get(project, "extras", Dict{String, Any}())
+          if !haskey(deps, NAME) && !haskey(extras, NAME)
+              extras[NAME] = UUID
+              project["extras"] = extras
+          end
+
+          sources = get(project, "sources", Dict{String, Any}())
+          sources[NAME] = Dict("path" => abspath("."))
+          project["sources"] = sources
+
+          open(projectfile, "w") do io
+              TOML.print(io, project; sorted = true)
+          end
+
       - name: Load this and run the downstream tests
-        shell: julia --project=downstream {0}
+        shell: julia --color=yes --project=downstream {0}
         run: |
           using Pkg
           try
-              # Force downstream to use this PR version of FastCholesky
-              Pkg.develop(PackageSpec(path="."))  # add this version
               Pkg.update()
               Pkg.test()  # run downstream tests
           catch err
