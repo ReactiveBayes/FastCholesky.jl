@@ -202,7 +202,8 @@ end
 """
     cholsqrt(input)
 
-Calculate the Cholesky square root of the input matrix `input`. This function is an alias for `fastcholesky(input).L`.
+Calculate the Cholesky square root of the input matrix `input`, i.e. the lower triangular factor `L` of `fastcholesky(input)`.
+The result is always a `LowerTriangular` whose parent is a plain matrix (never a lazy `Adjoint`), so the return type is concrete.
 NOTE: This is not equal to the standard matrix square root used in literature, which requires the result to be symmetric.
 
 ```jldoctest 
@@ -214,7 +215,17 @@ julia> isapprox(A_sqrt * A_sqrt', A)
 true
 ```
 """
-cholsqrt(input) = fastcholesky(input).L
+cholsqrt(input) = _cholsqrt_lower(fastcholesky(input))
+
+# `Cholesky.L` picks between `LowerTriangular(factors)` and `LowerTriangular(factors')`
+# based on the runtime `uplo` field. Since Julia 1.13 inference no longer collapses that
+# branch, `.L` infers as a `Union` of two `LowerTriangular` types. `fastcholesky` cannot
+# promise a fixed `uplo` (see `fastcholesky!`), so we materialize the adjoint instead and
+# keep the return type of `cholsqrt` concrete. See issue #35.
+function _cholsqrt_lower(C::Cholesky)
+    F = C.factors
+    return C.uplo === 'L' ? LowerTriangular(F) : LowerTriangular(copy(adjoint(F)))
+end
 
 cholsqrt(input::UniformScaling) = sqrt(input.λ) * I
 cholsqrt(input::Diagonal) = Diagonal(sqrt.(diag(input)))
