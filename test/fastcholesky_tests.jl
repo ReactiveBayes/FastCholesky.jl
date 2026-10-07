@@ -154,6 +154,41 @@ end
     end
 end
 
+@testitem "Static inputs symmetric up to rounding stay static, as dense ones succeed" begin
+    include("fastcholesky_setuptests.jl")
+
+    # Symmetric up to rounding, as `A Σ Aᵀ` with a rotation `A` often is (whether it is depends on the
+    # platform's floating-point contraction, so the rounding error is written out here)
+    input = @SMatrix [101.0 1.4e-16; -3.5e-16 101.0]
+    @test !issymmetric(input)
+    @test FastCholesky._issymmetric(input; tol=1e-8)
+
+    io = IOBuffer()
+    Base.with_logger(Base.SimpleLogger(io)) do
+        C = fastcholesky(input)
+        @test issuccess(C)
+        @test typeof(C) === typeof(cholesky(Hermitian(input)))
+        @test collect(C.L) ≈ collect(fastcholesky(Matrix(input)).L)
+        @test cholinv(input) isa SMatrix{2,2,Float64}
+        @test cholinv(input) ≈ inv(Matrix(input))
+
+        H = Hermitian(SMatrix{2,2}(make_rand_posdef(Float64, 2)), :L)
+        @test fastcholesky(H) isa Cholesky{Float64,<:SMatrix{2,2,Float64}}
+        @test cholinv(H) isa SMatrix{2,2,Float64}
+        @test cholinv(H) ≈ inv(Matrix(H))
+    end
+    @test isempty(String(take!(io)))
+
+    # Beyond the tolerance, as the dense path: reported and symmetrised
+    nonsymmetric = @SMatrix [2.0 1.0; 0.0 2.0]
+    @test_logs (:warn, r"The input matrix to `FastCholesky` is not symmetric") fastcholesky(nonsymmetric)
+    @test fastcholesky(nonsymmetric) isa Cholesky{Float64,<:SMatrix{2,2,Float64}}
+    @test collect(fastcholesky(nonsymmetric).L) ≈ collect(cholesky(Hermitian((nonsymmetric + nonsymmetric') / 2)).L)
+    Base.withenv("JULIA_FASTCHOLESKY_THROW_ERROR_NON_SYMMETRIC" => "1") do
+        @test_throws "The input matrix to `FastCholesky` was not symmetric" fastcholesky(nonsymmetric)
+    end
+end
+
 @testitem "UniformScaling support" begin
     include("fastcholesky_setuptests.jl")
 
