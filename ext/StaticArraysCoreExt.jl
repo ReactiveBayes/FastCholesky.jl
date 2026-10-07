@@ -2,18 +2,31 @@ module StaticArraysCoreExt # Should be same name as the file (just like a normal
 
 using FastCholesky, PositiveFactorizations, StaticArraysCore, LinearAlgebra
 
+# As the dense `fastcholesky!` with its defaults: an input symmetric within `1e-8` is factorised
+# from one triangle, one that is not is reported and symmetrised. StaticArrays' own `cholesky` of a
+# plain static matrix rejects anything not exactly symmetric, even with `check = false`, so a
+# product such as `A * Σ * A'` would fail on rounding alone.
 function FastCholesky.fastcholesky(input::StaticArraysCore.StaticArray)
-    C = cholesky(input, check = false)
-    f = C.factors
-    u = C.uplo
-    c = C.info
-    if !LinearAlgebra.issuccess(C)
-        C_ = cholesky(Positive, Matrix(C), tol = PositiveFactorizations.default_δ(C))
-        f = typeof(C.factors)(C_.factors)
-        u = typeof(C.uplo)(C_.uplo)
-        c = typeof(C.info)(C_.info)
+    symmetric_tol = 1e-8
+    A = input
+    if !FastCholesky._issymmetric(A; tol=symmetric_tol)
+        FastCholesky._report_non_symmetric(symmetric_tol)
+        A = (A + A') / 2
     end
-    return Cholesky(f, u, c)
+    return static_cholesky(A)
+end
+
+# StaticArrays factorises a `Hermitian` static matrix from its parent's upper triangle whatever its
+# `uplo`, so the full matrix is materialised first.
+function FastCholesky.fastcholesky(input::Hermitian{<:Real,<:StaticArraysCore.StaticMatrix})
+    return static_cholesky(typeof(parent(input))(input))
+end
+
+function static_cholesky(A::StaticArraysCore.StaticMatrix)
+    C = cholesky(Hermitian(A); check=false)
+    LinearAlgebra.issuccess(C) && return C
+    C_ = cholesky(Positive, Hermitian(Matrix(A)); tol=PositiveFactorizations.default_δ(A))
+    return Cholesky(typeof(C.factors)(C_.factors), typeof(C.uplo)(C_.uplo), typeof(C.info)(C_.info))
 end
 
 end # module

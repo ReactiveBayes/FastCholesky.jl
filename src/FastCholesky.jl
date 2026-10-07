@@ -115,14 +115,7 @@ function fastcholesky!(
             end
         end
     else
-        if haskey(ENV, THROW_ERROR_NON_SYMMETRIC_ENV)
-            error(
-                lazy"The input matrix to `FastCholesky` was not symmetric and `$(THROW_ERROR_NON_SYMMETRIC_ENV)` environment variable was set. The tolerance threshold was `$symmetric_tol`. Unset the environment variable to suppress this error and turn it to a warning.",
-            )
-        end
-        if !haskey(ENV, NO_WARN_NON_SYMMETRIC_ENV)
-            @warn lazy"The input matrix to `FastCholesky` is not symmetric. The tolerance threshold is `$symmetric_tol`. Set `$(NO_WARN_NON_SYMMETRIC_ENV)=1` environment variable to suppress this warning. Set `$(THROW_ERROR_NON_SYMMETRIC_ENV)=1` to throw an error instead of a warning."
-        end
+        _report_non_symmetric(symmetric_tol)
         if symmetrize_input
             A = (A + A') / 2
             return fastcholesky!(A; fallback_gmw81=fallback_gmw81, symmetrize_input=false, gmw81_tol=gmw81_tol, symmetric_tol=symmetric_tol)
@@ -140,6 +133,20 @@ function fastcholesky!(
     # the second `!is_almost_symmetric` branch either returns or errors
     # this statement to make the compiler happy and infer that the function is returning a `Cholesky` object
     return cholesky!(Hermitian(A); check=false)
+end
+
+# Warns about, or with `THROW_ERROR_NON_SYMMETRIC_ENV` set rejects, an input that is not symmetric
+# within `symmetric_tol`; shared by the dense path and the extensions.
+function _report_non_symmetric(symmetric_tol)
+    if haskey(ENV, THROW_ERROR_NON_SYMMETRIC_ENV)
+        error(
+            lazy"The input matrix to `FastCholesky` was not symmetric and `$(THROW_ERROR_NON_SYMMETRIC_ENV)` environment variable was set. The tolerance threshold was `$symmetric_tol`. Unset the environment variable to suppress this error and turn it to a warning.",
+        )
+    end
+    if !haskey(ENV, NO_WARN_NON_SYMMETRIC_ENV)
+        @warn lazy"The input matrix to `FastCholesky` is not symmetric. The tolerance threshold is `$symmetric_tol`. Set `$(NO_WARN_NON_SYMMETRIC_ENV)=1` environment variable to suppress this warning. Set `$(THROW_ERROR_NON_SYMMETRIC_ENV)=1` to throw an error instead of a warning."
+    end
+    return nothing
 end
 
 function _fastcholesky!(n, A::AbstractMatrix)
