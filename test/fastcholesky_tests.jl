@@ -157,10 +157,9 @@ end
 @testitem "Static inputs symmetric up to rounding stay static, as dense ones succeed" begin
     include("fastcholesky_setuptests.jl")
 
-    # `A Σ Aᵀ` with a rotation `A` is symmetric only up to rounding
-    θ = π / 35
-    A = @SMatrix [cos(θ) -sin(θ); sin(θ) cos(θ)]
-    input = A * SMatrix{2,2}(100.0I) * A' + SMatrix{2,2}(1.0I)
+    # Symmetric up to rounding, as `A Σ Aᵀ` with a rotation `A` often is (whether it is depends on the
+    # platform's floating-point contraction, so the rounding error is written out here)
+    input = @SMatrix [101.0 1.4e-16; -3.5e-16 101.0]
     @test !issymmetric(input)
     @test FastCholesky._issymmetric(input; tol=1e-8)
 
