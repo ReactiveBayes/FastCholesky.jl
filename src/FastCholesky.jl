@@ -94,22 +94,21 @@ function fastcholesky!(
     gmw81_tol=PositiveFactorizations.default_δ(A),
     symmetric_tol=1e-8,
 )
-    n = LinearAlgebra.checksquare(A)
 
     is_almost_symmetric = _issymmetric(A; tol=symmetric_tol)
 
     if is_almost_symmetric
-        C = n < 20 ? _fastcholesky!(n, A) : cholesky!(Hermitian(A); check=false)
-        if issuccess(C)
-            return C
+        if fallback_gmw81
+            C_gmw81 = cholesky!(PositiveFactorizations.Positive, A; tol=gmw81_tol)
+            if issuccess(C_gmw81)
+                return C_gmw81
+            else
+                throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
+            end
         else
-            if fallback_gmw81
-                RetryC = cholesky(PositiveFactorizations.Positive, Hermitian(A); tol=gmw81_tol)
-                if issuccess(RetryC)
-                    return RetryC
-                else
-                    throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
-                end
+            C_builtin = cholesky!(Hermitian(A); check=false)
+            if issuccess(C_builtin)
+                return C_builtin
             else
                 throw(ArgumentError("Cholesky factorization failed, the input matrix is not positive definite"))
             end
@@ -140,26 +139,6 @@ function fastcholesky!(
     # the second `!is_almost_symmetric` branch either returns or errors
     # this statement to make the compiler happy and infer that the function is returning a `Cholesky` object
     return cholesky!(Hermitian(A); check=false)
-end
-
-function _fastcholesky!(n, A::AbstractMatrix)
-    @inbounds @fastmath for col in 1:n
-        @simd for idx in 1:(col - 1)
-            A[col, col] -= A[col, idx]^2
-        end
-        if A[col, col] <= 0
-            return Cholesky(A, 'L', convert(BlasInt, -1))
-        end
-        A[col, col] = sqrt(A[col, col])
-        invAcc = inv(A[col, col])
-        for row in (col + 1):n
-            @simd for idx in 1:(col - 1)
-                A[row, col] -= A[row, idx] * A[col, idx]
-            end
-            A[row, col] *= invAcc
-        end
-    end
-    return Cholesky(A, 'L', convert(BlasInt, 0))
 end
 
 function _issymmetric(A::AbstractMatrix; tol=PositiveFactorizations.default_δ(A))
