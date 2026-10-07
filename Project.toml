@@ -1,7 +1,7 @@
 name = "FastCholesky"
 uuid = "2d5283b6-8564-42b6-bb00-83ed8e915756"
 authors = ["Bart van Erp <b.v.erp@tue.nl>, Bagaev Dmitry <d.v.bagaev@tue.nl> and contributors"]
-version = "1.4.5"
+version = "1.5.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -9,23 +9,27 @@ PositiveFactorizations = "85a6dd25-e78a-55b7-8502-1745935b8125"
 StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 
 [weakdeps]
+Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 
 [extensions]
+ReactantExt = "Reactant"
 StaticArraysCoreExt = "StaticArraysCore"
 
 [compat]
 PositiveFactorizations = "0.2"
+Reactant = "0.2"
 StaticArraysCore = "1"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "BlockArrays", "StaticArrays", "StaticArraysCore", "ReTestItems", "JET"]
+test = ["Test", "BlockArrays", "StaticArrays", "StaticArraysCore", "ReTestItems", "JET", "Reactant"]
