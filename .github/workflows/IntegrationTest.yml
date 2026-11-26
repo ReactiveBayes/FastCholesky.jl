@@ -26,7 +26,9 @@ jobs:
           - { user: ReactiveBayes, repo: BayesBase.jl }
           - { user: ReactiveBayes, repo: ExponentialFamily.jl }
           - { user: ReactiveBayes, repo: ExponentialFamilyProjection.jl }
-          - { user: ReactiveBayes, repo: ReactiveMP.jl }
+          # ReactiveMP 7 no longer depends on FastCholesky; the rules that used it moved to rule packages
+          - { user: ReactiveBayes, repo: StandardMessagePassingRules.jl }
+          - { user: ReactiveBayes, repo: AutoregressiveMessagePassingRules.jl }
           - { user: ReactiveBayes, repo: RxInfer.jl }
 
     steps:
