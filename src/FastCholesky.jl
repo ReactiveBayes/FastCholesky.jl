@@ -34,7 +34,9 @@ true
 ```
 """
 function fastcholesky(input::AbstractMatrix)
-    A = zeros(eltype(input), size(input))
+    # The factor of an integer matrix is not integer, so the copy is in the corresponding float type;
+    # in the input's type, `cholinv([9 0; 0 9])` throws an `InexactError`
+    A = zeros(float(eltype(input)), size(input))
     copyto!(A, input)
     return fastcholesky!(A)
 end

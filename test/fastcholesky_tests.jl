@@ -189,6 +189,19 @@ end
     end
 end
 
+@testitem "Integer matrices are factorized in the corresponding float type" begin
+    using LinearAlgebra
+
+    for A in ([9 0; 0 9], [4 2; 2 5], Int32[4 2; 2 5])
+        @test fastcholesky(A).L * fastcholesky(A).L' ≈ A
+        @test cholinv(A) ≈ inv(A)
+        @test cholsqrt(A) * cholsqrt(A)' ≈ A
+        @test chollogdet(A) ≈ logdet(A)
+        @test all(cholinv_logdet(A) .≈ (inv(A), logdet(A)))
+        @test eltype(cholinv(A)) <: AbstractFloat
+    end
+end
+
 @testitem "UniformScaling support" begin
     include("fastcholesky_setuptests.jl")
 
